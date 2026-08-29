@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meet & Greet Tables</title>
+    <style>
+        /* Theme variables for brand and tile colors */
+        :root {
+            --brand: #FF6600;
+            --supplier: #2C6FB3;
+            --airline: #0D2A4A;
+            --text-on-dark: #FFFFFF;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        h1, h2 {
+            color: var(--brand);
+        }
+
+        /* Header row: title left, actions right */
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        form {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        form label {
+            margin-right: 10px;
+        }
+
+        form input[type="text"], form input[type="number"] {
+            margin-right: 20px;
+            padding: 5px;
+            width: 150px;
+        }
+
+        form input[type="radio"] {
+            margin-right: 5px;
+        }
+
+        form input[type="radio"] + label {
+            margin-right: 15px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #FF6600;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #cc5200;
+        }
+
+        /* Company tile grid: 8 cols (desktop), 4 cols (≤900px), 2 cols (≤600px) */
+        .container {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 10px;
+        }
+
+        /* Base tile styling */
+        .company-card {
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            padding: 12px;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+            font-size: 0.8em;
+            color: var(--text-on-dark);
+        }
+
+        /* Tile heading */
+        .company-card h3 {
+            margin: 0 0 10px;
+            font-size: 1.25em;
+            font-weight: 700;
+            color: white;
+        }
+
+        /* Availability dot (green/red) */
+        .availability-icon {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+            border: 1px solid rgba(255,255,255,0.9);
+        }
+
+        .available {
+            background-color: green;
+        }
+
+        .not-available {
+            background-color: red;
+        }
+
+        /* Tile background colors by type with subtle dark overlay for readability */
+        .supplier {
+            background: linear-gradient(0deg, rgba(0,0,0,0.18), rgba(0,0,0,0.18)), var(--supplier);
+        }
+
+        .airline {
+            background: linear-gradient(0deg, rgba(0,0,0,0.18), rgba(0,0,0,0.18)), var(--airline);
+        }
+
+        /* Button that toggles Available/Meeting state */
+        .availability-toggle {
+            background: transparent;
+            border: none;
+            color: inherit;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+        .availability-toggle:focus-visible {
+            outline: 2px solid #fff;
+            outline-offset: 2px;
+        }
+        .availability-toggle.disabled { cursor: default; }
+
+        /* Generic small icon button (used for remove ❌) */
+        .icon-button {
+            background: transparent;
+            border: none;
+            color: inherit;
+            padding: 2px 4px;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+        }
+        .icon-button:hover { opacity: 0.85; }
+        .icon-button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+        /* Row layout for right-aligning table number and remove icon */
+        .card-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        /* Small pill badge for waitlist count */
+        .badge {
+            display: inline-block;
+            min-width: 18px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background: #ffffff;
+            color: #333;
+            font-size: 12px;
+            font-weight: 700;
+            text-align: center;
+        }
+        .hidden { display: none; }
+
+        /* Waitlist modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal {
+            background: #ffffff;
+            color: #222;
+            width: 90%;
+            max-width: 480px;
+            border-radius: 6px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            padding: 16px;
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .modal-title { font-size: 1.1em; font-weight: 700; }
+        .modal-close { background: transparent; border: none; font-size: 20px; cursor: pointer; }
+        .waitlist-row { display: flex; gap: 8px; margin: 10px 0; }
+        .waitlist-row input { flex: 1; padding: 6px 8px; }
+        .waitlist-list { list-style: none; padding: 0; margin: 10px 0; max-height: 240px; overflow: auto; }
+        .waitlist-item { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; }
+        .btn-secondary { padding: 8px 12px; background: #e6e6e6; color: #222; border: none; cursor: pointer; }
+        .btn-secondary:hover { background: #d9d9d9; }
+
+        /* Confirm modal (Yes/No) */
+        .confirm-text { margin: 8px 0 16px; color: #333; }
+
+        /* Meeting timer display on cards */
+        .meeting-timer {
+            margin-top: 8px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 0.95em;
+            background: rgba(255,255,255,0.15);
+            padding: 4px 8px;
+            border-radius: 6px;
+            display: inline-block;
+            min-width: 64px;
+        }
+
+        /* Expired timer (0:00) with others waiting - red background, white text */
+        .meeting-timer.expired {
+            background: #ff3333;
+            color: #FFFFFF;
+        }
+
+        /* Visual warning when meeting time is within MEETING_WARNING_MS of end */
+        .company-card.time-warning {
+            box-shadow: 0 0 0 3px #ffcc00 inset, 0 6px 16px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Visual expired indicator when time hits 0 */
+        .company-card.time-expired {
+            box-shadow: 0 0 0 3px #ff3333 inset, 0 6px 16px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Top-right table timer badge */
+        .table-time-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.9);
+            color: #222;
+            font-size: 12px;
+            font-weight: 700;
+            min-width: 52px;
+            text-align: center;
+        }
+        /* Reverse-highlight when threshold exceeded */
+        .table-time-badge.warning {
+            background: #ffcc00;
+            color: #000;
+        }
+
+        /* Reduce columns on smaller screens (8 → 4 → 2) */
+        @media (max-width: 900px) {
+            .container { grid-template-columns: repeat(4, 1fr); }
+        }
+        @media (max-width: 600px) {
+            .container { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header-row">
+        <h1>Meet & Greet Tables</h1>
+        <button id="saveCsvBtn" type="button">Session Close</button>
+    </div>
+
+    <!-- Input form for creating company tiles -->
+    <form id="companyForm">
+        <label for="name">Company Name:</label>
+        <input type="text" id="name" name="name" required>
+
+        <fieldset>
+            <legend>Company Type</legend>
+            <input type="radio" id="airline" name="type" value="Airline" checked>
+            <label for="airline">Airline</label>
+            <input type="radio" id="supplier" name="type" value="Supplier">
+            <label for="supplier">Supplier</label>
+        </fieldset>
+
+        <label for="tableNumber">Table Number:</label>
+        <input type="number" id="tableNumber" name="tableNumber" min="1" max="99" inputmode="numeric" autocomplete="off" required>
+
+        <button type="submit">Add Company</button>
+    </form>
+
+    <!-- Grid of company tiles -->
+    <h2>Companies</h2>
+
+    <div class="container" id="companiesContainer"></div>
+
+    <!-- Waitlist Modal -->
+    <div id="waitlistModal" class="modal-overlay" aria-hidden="true">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="waitlistTitle">Waitlist</div>
+                <button class="modal-close" id="waitlistClose" type="button" title="Close">×</button>
+            </div>
+            <div id="waitlistMeta" style="font-size: 0.9em; color:#555;"></div>
+            <div class="waitlist-row">
+                <input type="text" id="waitlistNameInput" placeholder="Add name to waitlist" />
+                <button id="waitlistAddBtn" type="button" class="btn-secondary">Add</button>
+            </div>
+            <ul id="waitlistItems" class="waitlist-list"></ul>
+            <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;">
+                <button id="waitlistNextBtn" type="button" class="btn-secondary">Next</button>
+                <button id="waitlistCloseFooter" type="button" class="btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Duplicate confirmation Modal -->
+    <div id="confirmModal" class="modal-overlay" aria-hidden="true">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Confirm</div>
+                <button class="modal-close" id="confirmClose" type="button" title="Close">×</button>
+            </div>
+            <div id="confirmText" class="confirm-text"></div>
+            <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;">
+                <button id="confirmNoBtn" type="button" class="btn-secondary">No</button>
+                <button id="confirmYesBtn" type="button" class="btn-secondary">Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========================
+        // Timer Controls
+        // ========================
+        // Meeting countdown length.
+        // Example: 10 minutes -> 10 * 60 * 1000
+        const MEETING_DURATION_MS = 10 * 60 * 1000; // << Update meeting length here
+        // Yellow card border when this much meeting time remains.
+        // Example: 2 minutes -> 2 * 60 * 1000
+        const MEETING_WARNING_MS = 2 * 60 * 1000; // << Update meeting warning threshold here
+        // Yellow table badge when company has been at table this long.
+        // Example: 30 minutes -> 30 * 60 * 1000
+        const TABLE_TIMER_WARNING_MS = 30 * 60 * 1000; // << Update table timer warning threshold here
+        // How often the at-table timer display refreshes (ms).
+        const TABLE_TIMER_UPDATE_INTERVAL_MS = 500;
+
+        // Load companies from localStorage (persists per browser/device)
+        const companies = JSON.parse(localStorage.getItem('companies') || '[]');
+        // Session records: one record per company with AddedAt and LeftAt
+        // Cleared when a CSV is saved
+        const sessionRecords = JSON.parse(localStorage.getItem('sessionRecords') || '[]');
+        // Waitlists stored by table number: { [tableNumber]: [names...] }
+        const waitlists = JSON.parse(localStorage.getItem('waitlists') || '{}');
+        function saveWaitlists() { localStorage.setItem('waitlists', JSON.stringify(waitlists)); }
+        // History of all names PER COMPANY NAME (case-insensitive), persists across tables and leaves
+        // Structure: { [companyNameLower]: [names...] }
+        const waitlistHistory = JSON.parse(localStorage.getItem('waitlistHistory') || '{}');
+        function saveWaitlistHistory() { localStorage.setItem('waitlistHistory', JSON.stringify(waitlistHistory)); }
+        // Modal state
+        let activeWaitlistTable = null;
+        let activeCompanyName = null;
+        // Confirm modal callbacks
+        let confirmYesCb = null;
+        let confirmNoCb = null;
+        // Meeting timers per table { [table]: { endTime, intervalId } }
+        const meetingTimers = {};
+        // Tracks current meeting person per table: { [table]: string|null }
+        const currentMeetingByTable = {};
+        // Table timers per table { [table]: intervalId }
+        const tableTimers = {};
+
+        // Helper: get local time as ISO-like string (YYYY-MM-DDTHH:MM:SS.mmm format, but in local time)
+        function getLocalTimeISOString() {
+            const d = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const pad3 = n => String(n).padStart(3, '0');
+            const year = d.getFullYear();
+            const month = pad(d.getMonth() + 1);
+            const day = pad(d.getDate());
+            const hours = pad(d.getHours());
+            const minutes = pad(d.getMinutes());
+            const seconds = pad(d.getSeconds());
+            const millis = pad3(d.getMilliseconds());
+            return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${millis}`;
+        }
+
+        // Helper: split timestamp into date and time parts
+        function splitTimestamp(isoString) {
+            if (!isoString || isoString === '') {
+                return { date: '', time: '' };
+            }
+            // Remove 'Z' if present (UTC indicator) - but preserve the full time string
+            const cleaned = isoString.replace('Z', '');
+            
+            // Find the 'T' separator to split date and time
+            const tIndex = cleaned.indexOf('T');
+            if (tIndex === -1) {
+                // No 'T' found, return date part only
+                return { date: cleaned, time: '' };
+            }
+            
+            const datePart = cleaned.substring(0, tIndex);
+            // Extract everything after 'T' as the time part (should be HH:MM:SS.mmm)
+            let timePart = cleaned.substring(tIndex + 1);
+            
+            // Ensure time part includes hours (format: HH:MM:SS.mmm)
+            // If time part exists, verify it starts with hours pattern
+            if (timePart && timePart.length > 0) {
+                // Check if it starts with at least one digit followed by colon (HH:)
+                // This ensures we have the hours component
+                if (!/^\d+:/.test(timePart)) {
+                    // Time format is invalid, try to extract from original using regex
+                    const timeMatch = cleaned.match(/T(\d{2}:\d{2}:\d{2}(?:\.\d+)?)/);
+                    if (timeMatch && timeMatch[1]) {
+                        timePart = timeMatch[1];
+                    } else {
+                        // Last resort: if original had 'Z', try parsing as Date and converting to local
+                        if (isoString.includes('Z')) {
+                            try {
+                                const d = new Date(isoString);
+                                if (!isNaN(d.getTime())) {
+                                    const pad = n => String(n).padStart(2, '0');
+                                    const pad3 = n => String(n).padStart(3, '0');
+                                    timePart = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad3(d.getMilliseconds())}`;
+                                }
+                            } catch (e) {
+                                timePart = '';
+                            }
+                        } else {
+                            timePart = '';
+                        }
+                    }
+                }
+            }
+            
+            return {
+                date: datePart,
+                time: timePart
+            };
+        }
+
+        // Helper: find company object by table number
+        function getCompanyByTable(tableNumber) {
+            return companies.find(c => parseInt(c.tableNumber, 10) === parseInt(tableNumber, 10));
+        }
+
+        // Helper: find or create session record for a company/table
+        function getOrCreateSessionRecord(company) {
+            const keyMatch = r => r.name.toLowerCase() === company.name.toLowerCase() && parseInt(r.tableNumber, 10) === parseInt(company.tableNumber, 10);
+            let rec = sessionRecords.find(keyMatch);
+            if (!rec) {
+                rec = { name: company.name, type: company.type, tableNumber: company.tableNumber, addedAt: getLocalTimeISOString(), leftAt: null, meetings: [] };
+                sessionRecords.push(rec);
+                saveSessionRecords();
+            } else {
+                if (!rec.addedAt) rec.addedAt = getLocalTimeISOString();
+                if (!Array.isArray(rec.meetings)) rec.meetings = [];
+            }
+            return rec;
+        }
+
+        function logMeetingStart(tableNumber, personName) {
+            const company = getCompanyByTable(tableNumber);
+            if (!company) return;
+            const rec = getOrCreateSessionRecord(company);
+            if (!Array.isArray(rec.meetings)) rec.meetings = [];
+            rec.meetings.push({ person: personName, startAt: getLocalTimeISOString(), endAt: null });
+            saveSessionRecords();
+        }
+
+        function logMeetingEnd(tableNumber, personName) {
+            const company = getCompanyByTable(tableNumber);
+            if (!company) return;
+            const rec = getOrCreateSessionRecord(company);
+            if (!Array.isArray(rec.meetings)) rec.meetings = [];
+            // Find the last meeting entry for this person without an endAt and set it
+            for (let i = rec.meetings.length - 1; i >= 0; i--) {
+                const m = rec.meetings[i];
+                if (m.person && m.person.toLowerCase() === String(personName).toLowerCase() && !m.endAt) {
+                    m.endAt = getLocalTimeISOString();
+                    break;
+                }
+            }
+            saveSessionRecords();
+        }
+
+        function formatMmSs(msRemaining) {
+            const totalSec = Math.max(0, Math.floor(msRemaining / 1000));
+            const mm = String(Math.floor(totalSec / 60)).padStart(2, '0');
+            const ss = String(totalSec % 60).padStart(2, '0');
+            return mm + ':' + ss;
+        }
+
+        // Format elapsed time for the table timer (mm:ss). Update if hours are needed.
+        function formatElapsed(msElapsed) {
+            return formatMmSs(msElapsed);
+        }
+
+        function updateTableTimerDisplay(tableNumber) {
+            const card = document.querySelector(`.company-card[data-table="${tableNumber}"]`);
+            if (!card) return;
+            const badge = card.querySelector('.table-time-badge');
+            if (!badge) return;
+            const company = getCompanyByTable(tableNumber);
+            if (!company) return;
+            const keyMatch = r => r.name.toLowerCase() === company.name.toLowerCase() && parseInt(r.tableNumber, 10) === parseInt(company.tableNumber, 10);
+            const rec = sessionRecords.find(keyMatch);
+            if (!rec || !rec.addedAt) return;
+            const elapsed = Date.now() - new Date(rec.addedAt).getTime();
+            if (Number.isNaN(elapsed) || elapsed < 0) return;
+            badge.textContent = formatElapsed(elapsed);
+            if (elapsed >= TABLE_TIMER_WARNING_MS) {
+                badge.classList.add('warning');
+            } else {
+                badge.classList.remove('warning');
+            }
+        }
+
+        function startTableTimer(tableNumber) {
+            const key = String(tableNumber);
+            stopTableTimer(tableNumber);
+            updateTableTimerDisplay(tableNumber);
+            tableTimers[key] = setInterval(() => updateTableTimerDisplay(tableNumber), TABLE_TIMER_UPDATE_INTERVAL_MS);
+        }
+
+        function stopTableTimer(tableNumber) {
+            const key = String(tableNumber);
+            if (tableTimers[key]) {
+                clearInterval(tableTimers[key]);
+                delete tableTimers[key];
+            }
+        }
+
+        function updateTimerDisplay(tableNumber, msRemaining) {
+            const card = document.querySelector(`.company-card[data-table="${tableNumber}"]`);
+            if (!card) return;
+            const el = card.querySelector('.meeting-timer');
+            if (!el) return;
+            const key = String(tableNumber);
+            const list = waitlists[key] || [];
+            const hasOthersWaiting = list.length > 1; // More than just the current person
+            
+            // If timer expired (0 or negative) and others are waiting, show 0:00 with expired styling
+            if (msRemaining <= 0 && hasOthersWaiting) {
+                el.textContent = '0:00';
+                el.classList.add('expired');
+            } else if (msRemaining > 0) {
+                el.textContent = formatMmSs(msRemaining);
+                el.classList.remove('expired');
+            } else {
+                // Timer expired and no others waiting - hide it
+                el.textContent = '';
+                el.classList.remove('expired');
+            }
+            
+            // Add visual warning when within MEETING_WARNING_MS of end
+            if (msRemaining > 0 && msRemaining <= MEETING_WARNING_MS) {
+                card.classList.add('time-warning');
+                card.classList.remove('time-expired');
+            } else {
+                card.classList.remove('time-warning');
+                if (msRemaining <= 0 && hasOthersWaiting) {
+                    // Only show red border if timer expired AND others are waiting
+                    card.classList.add('time-expired');
+                } else {
+                    card.classList.remove('time-expired');
+                }
+            }
+        }
+
+        function stopMeetingTimer(tableNumber) {
+            const key = String(tableNumber);
+            const t = meetingTimers[key];
+            if (t && t.intervalId) {
+                clearInterval(t.intervalId);
+            }
+            delete meetingTimers[key];
+            // Update display will handle showing 0:00 if others are waiting
+            updateTimerDisplay(tableNumber, 0);
+            // Don't remove time-expired class here - let updateTimerDisplay handle it
+        }
+
+        function startMeetingTimer(tableNumber, durationMs = MEETING_DURATION_MS) {
+            const key = String(tableNumber);
+            // Reset existing timer
+            stopMeetingTimer(tableNumber);
+            const endTime = Date.now() + durationMs;
+            updateTimerDisplay(tableNumber, durationMs);
+            const intervalId = setInterval(() => {
+                const remaining = endTime - Date.now();
+                if (remaining <= 0) {
+                    // Timer finished. Do not close the meeting automatically.
+                    stopMeetingTimer(tableNumber);
+                    // updateTimerDisplay will show 0:00 with red styling if others are waiting
+                    const card = document.querySelector(`.company-card[data-table="${tableNumber}"]`);
+                    const list = waitlists[key] || [];
+                    const currentName = currentMeetingByTable[key] || (list.length > 0 ? list[0] : null);
+                    // If there is no one else waiting (queue length <= 1), prompt for more time
+                    if ((list.length <= 1)) {
+                        if (card) { card.classList.remove('time-warning'); card.classList.add('time-expired'); }
+                        const company = getCompanyByTable(tableNumber);
+                        const companyName = company ? company.name : '';
+                        const person = currentName || '';
+                        currentMeetingByTable[key] = currentName || null;
+                        if (person) {
+                            openConfirm(`Time's up for ${companyName}. Allow more time for ${person}?`, function yes() {
+                                // Restart timer for full duration and clear expired border; keep meeting open
+                                if (card) { card.classList.remove('time-expired'); }
+                                // Ensure status remains Meeting
+                                setTableStatus(tableNumber, true);
+                                startMeetingTimer(tableNumber);
+                            }, function no() {
+                                // Treat as Next: end current and move queue
+                                // Clear expired timer styling before processing
+                                if (card) {
+                                    const timerEl = card.querySelector('.meeting-timer');
+                                    if (timerEl) {
+                                        timerEl.classList.remove('expired');
+                                    }
+                                    card.classList.remove('time-expired');
+                                }
+                                const keyNo = String(tableNumber);
+                                const listNo = waitlists[keyNo] || [];
+                                // End current meeting if exists
+                                if (person) {
+                                    logMeetingEnd(tableNumber, person);
+                                }
+                                if (listNo.length > 0) {
+                                    // Remove current from waitlist
+                                    listNo.shift();
+                                    waitlists[keyNo] = listNo;
+                                    saveWaitlists();
+                                }
+                                renderWaitlistItems();
+                                syncStatusWithWaitlist(tableNumber);
+                                if (listNo.length > 0) {
+                                    // Start next meeting
+                                    currentMeetingByTable[keyNo] = listNo[0] || null;
+                                    if (currentMeetingByTable[keyNo]) {
+                                        // Mark Meeting and start timer
+                                        setTableStatus(tableNumber, true);
+                                        logMeetingStart(tableNumber, currentMeetingByTable[keyNo]);
+                                        startMeetingTimer(tableNumber);
+                                    }
+                                } else {
+                                    // No one waiting: ensure Available
+                                    currentMeetingByTable[keyNo] = null;
+                                    setTableStatus(tableNumber, false);
+                                    stopMeetingTimer(tableNumber);
+                                }
+                            });
+                        }
+                    }
+                    return;
+                }
+                updateTimerDisplay(tableNumber, remaining);
+            }, 1000);
+            meetingTimers[key] = { endTime, intervalId };
+        }
+        
+        function setTableStatus(tableNumber, isMeeting) {
+            const card = document.querySelector(`.company-card[data-table="${tableNumber}"]`);
+            if (!card) return;
+            const icon = card.querySelector('.availability-icon');
+            const text = card.querySelector('.availability-text');
+            if (!icon || !text) return;
+            if (isMeeting) {
+                icon.classList.remove('available');
+                icon.classList.add('not-available');
+                text.textContent = 'Meeting';
+            } else {
+                icon.classList.remove('not-available');
+                icon.classList.add('available');
+                text.textContent = 'Available';
+                // Remove red border when status becomes Available
+                card.classList.remove('time-expired');
+            }
+        }
+
+        function syncStatusWithWaitlist(tableNumber) {
+            const list = waitlists[String(tableNumber)] || [];
+            setTableStatus(tableNumber, list.length > 0);
+            updateWaitlistCount(tableNumber);
+        }
+
+        // Persist current companies array to localStorage
+        function saveCompanies() {
+            localStorage.setItem('companies', JSON.stringify(companies));
+        }
+
+        // Persist session records
+        function saveSessionRecords() {
+            localStorage.setItem('sessionRecords', JSON.stringify(sessionRecords));
+        }
+
+        // Clear and re-render tiles sorted by table number
+        function renderCompanies() {
+            const container = document.getElementById('companiesContainer');
+            container.innerHTML = '';
+            const sorted = [...companies].sort((a, b) => parseInt(a.tableNumber, 10) - parseInt(b.tableNumber, 10));
+            sorted.forEach(c => addCompanyToContainer(c.name, c.type, c.tableNumber));
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initial render from storage
+            renderCompanies();
+        });
+
+        // Handle creation with validation/duplicate checks
+        document.getElementById('companyForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const name = document.getElementById('name').value.trim();
+            const type = document.querySelector('input[name="type"]:checked').value;
+            const tableNumberRaw = document.getElementById('tableNumber').value;
+            const tableNumber = parseInt(tableNumberRaw, 10);
+
+            // Require non-empty name
+            if (!name) {
+                alert("Company name cannot be empty");
+                return;
+            }
+
+            // Table number must be numeric and within range
+            if (Number.isNaN(tableNumber) || tableNumber < 1 || tableNumber > 99) {
+                alert("Table numbers must be between 1 and 99");
+                return;
+            }
+
+            // Enforce unique name (case-insensitive)
+            const nameExists = companies.some(c => c.name.toLowerCase() === name.toLowerCase());
+            if (nameExists) {
+                alert("A company with this name already exists");
+                return;
+            }
+
+            // Enforce unique table number
+            const tableTaken = companies.some(c => parseInt(c.tableNumber, 10) === tableNumber);
+            if (tableTaken) {
+                alert("This table number is already assigned");
+                return;
+            }
+
+            companies.push({ name, type, tableNumber });
+            saveCompanies();
+            // Track AddedAt in unified session record (per name+table)
+            const keyMatch = r => r.name.toLowerCase() === name.toLowerCase() && parseInt(r.tableNumber, 10) === tableNumber;
+            let rec = sessionRecords.find(keyMatch);
+            if (!rec) {
+                rec = { name, type, tableNumber, addedAt: getLocalTimeISOString(), leftAt: null };
+                sessionRecords.push(rec);
+            } else if (!rec.addedAt) {
+                rec.addedAt = getLocalTimeISOString();
+            }
+            saveSessionRecords();
+            renderCompanies();
+            clearForm();
+        });
+
+        // Build and append a single company card (DOM only)
+        function addCompanyToContainer(name, type, tableNumber) {
+            const container = document.getElementById('companiesContainer');
+
+            const companyCard = document.createElement('div');
+            companyCard.classList.add('company-card');
+            companyCard.classList.add(type.toLowerCase()); // Add class for background color
+            companyCard.dataset.table = String(tableNumber);
+
+            const companyName = document.createElement('h3');
+            companyName.textContent = name;
+
+            const availabilityIcon = document.createElement('span');
+            availabilityIcon.classList.add('availability-icon', 'available');
+
+            const availabilityText = document.createElement('span');
+            availabilityText.className = 'availability-text';
+            availabilityText.textContent = 'Available';
+
+            // Availability toggle button (Available ⇄ Meeting)
+            const availabilityButton = document.createElement('button');
+            availabilityButton.type = 'button';
+            availabilityButton.className = 'availability-toggle';
+            availabilityButton.appendChild(availabilityIcon);
+            availabilityButton.appendChild(availabilityText);
+            // Waitlist count badge next to availability text
+            const waitlistCountAvail = document.createElement('span');
+            waitlistCountAvail.className = 'badge waitlist-count hidden';
+            waitlistCountAvail.textContent = '0';
+            availabilityButton.appendChild(waitlistCountAvail);
+
+            // Availability is controlled by waitlist; manual toggle disabled
+            availabilityButton.classList.add('disabled');
+
+            const companyTableNumber = document.createElement('p');
+            companyTableNumber.textContent = `Table: ${tableNumber}`;
+            companyTableNumber.style.whiteSpace = 'nowrap';
+
+            // Remove icon button (company has left)
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'icon-button leave-button';
+            removeButton.title = 'Remove (company left)';
+            removeButton.textContent = '❌';
+            removeButton.addEventListener('click', function() {
+                const index = companies.findIndex(c => parseInt(c.tableNumber, 10) === parseInt(tableNumber, 10));
+                if (index !== -1) {
+                    // End any active meeting before removing company
+                    const leaving = companies[index];
+                    const key = String(tableNumber);
+                    const currentPerson = currentMeetingByTable[key];
+                    const keyMatch = r => r.name.toLowerCase() === leaving.name.toLowerCase() && parseInt(r.tableNumber, 10) === parseInt(leaving.tableNumber, 10);
+                    
+                    // If there's an active meeting, end it first
+                    if (currentPerson) {
+                        let rec = sessionRecords.find(keyMatch);
+                        if (rec && Array.isArray(rec.meetings)) {
+                            // Find the last meeting entry for this person without an endAt and set it
+                            for (let i = rec.meetings.length - 1; i >= 0; i--) {
+                                const m = rec.meetings[i];
+                                if (m.person && m.person.toLowerCase() === String(currentPerson).toLowerCase() && !m.endAt) {
+                                    m.endAt = getLocalTimeISOString();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Log LeftAt in the same session record
+                    let rec = sessionRecords.find(keyMatch);
+                    if (!rec) {
+                        rec = { name: leaving.name, type: leaving.type, tableNumber: leaving.tableNumber, addedAt: null, leftAt: getLocalTimeISOString(), meetings: [] };
+                        sessionRecords.push(rec);
+                    } else {
+                        rec.leftAt = getLocalTimeISOString();
+                        if (!Array.isArray(rec.meetings)) rec.meetings = [];
+                    }
+                    saveSessionRecords();
+                    // Clear waitlist and history for this table
+                    if (waitlists[key]) { delete waitlists[key]; saveWaitlists(); }
+                    // Stop and clear any active timer
+                    stopMeetingTimer(tableNumber);
+                    stopTableTimer(tableNumber);
+                    currentMeetingByTable[key] = null;
+                    companies.splice(index, 1);
+                    saveCompanies();
+                    renderCompanies();
+                }
+            });
+
+            companyCard.appendChild(companyName);
+            // Top status row: availability/status + waitlist count on left, remove on right
+            const statusRow = document.createElement('div');
+            statusRow.className = 'card-row';
+            const statusLeft = document.createElement('div');
+            statusLeft.style.display = 'flex';
+            statusLeft.style.alignItems = 'center';
+            statusLeft.style.gap = '8px';
+            statusLeft.appendChild(availabilityButton);
+            const statusRight = document.createElement('div');
+            statusRight.style.display = 'flex';
+            statusRight.style.alignItems = 'center';
+            statusRight.style.gap = '4px';
+            statusRight.appendChild(removeButton);
+            statusRow.appendChild(statusLeft);
+            statusRow.appendChild(statusRight);
+            companyCard.appendChild(statusRow);
+            // Right-aligned row for table number and actions
+            const tableRow = document.createElement('div');
+            tableRow.className = 'card-row';
+            const leftRow = document.createElement('div');
+            leftRow.style.display = 'flex';
+            leftRow.style.alignItems = 'center';
+            leftRow.style.gap = '8px';
+            leftRow.appendChild(companyTableNumber);
+            tableRow.appendChild(leftRow);
+            const rightRow = document.createElement('div');
+            rightRow.style.display = 'flex';
+            rightRow.style.alignItems = 'center';
+            rightRow.style.gap = '4px';
+            rightRow.style.flexShrink = '0';
+            // Table timer badge (top-right)
+            const tableTimeBadge = document.createElement('span');
+            tableTimeBadge.className = 'table-time-badge';
+            tableTimeBadge.title = 'Time at table';
+            tableTimeBadge.textContent = '';
+            rightRow.appendChild(tableTimeBadge);
+
+            // Waitlist button
+            const waitlistBtn = document.createElement('button');
+            waitlistBtn.type = 'button';
+            waitlistBtn.className = 'icon-button';
+            waitlistBtn.title = 'Open waitlist';
+            waitlistBtn.textContent = '📝';
+            waitlistBtn.addEventListener('click', function() {
+                openWaitlistModal(Number(tableNumber), name);
+            });
+            rightRow.appendChild(waitlistBtn);
+            tableRow.appendChild(rightRow);
+
+            companyCard.appendChild(tableRow);
+
+            // Meeting timer row at bottom center with label
+            const meetingRow = document.createElement('div');
+            meetingRow.style.display = 'flex';
+            meetingRow.style.justifyContent = 'center';
+            meetingRow.style.alignItems = 'center';
+            meetingRow.style.gap = '6px';
+            const meetingLabel = document.createElement('span');
+            meetingLabel.textContent = 'Meeting:';
+            meetingLabel.style.fontWeight = '700';
+            const timerEl = document.createElement('div');
+            timerEl.className = 'meeting-timer';
+            timerEl.textContent = '';
+            meetingRow.appendChild(meetingLabel);
+            meetingRow.appendChild(timerEl);
+            companyCard.appendChild(meetingRow);
+
+            container.appendChild(companyCard);
+
+            // Initial status and count must be applied AFTER the card is in the DOM
+            syncStatusWithWaitlist(tableNumber);
+            updateWaitlistCount(tableNumber);
+            // Start/refresh the at-table timer
+            startTableTimer(tableNumber);
+        }
+
+        function updateWaitlistCount(tableNumber) {
+            const key = String(tableNumber);
+            const rawCount = (waitlists[key] || []).length;
+            const count = Math.max(rawCount - 1, 0);
+            const card = document.querySelector(`.company-card[data-table="${tableNumber}"]`);
+            if (!card) return;
+            const el = card.querySelector('.waitlist-count');
+            if (!el) return;
+            el.textContent = String(count);
+            // Always show the badge, even when 0
+            el.classList.remove('hidden');
+        }
+
+        // Open waitlist modal for a specific table
+        function openWaitlistModal(tableNumber, companyName) {
+            activeWaitlistTable = Number(tableNumber);
+            activeCompanyName = String(companyName || '');
+            const modal = document.getElementById('waitlistModal');
+            const title = document.getElementById('waitlistTitle');
+            const meta = document.getElementById('waitlistMeta');
+            title.textContent = 'Waitlist';
+            meta.textContent = `Company: ${companyName}  |  Table: ${tableNumber}`;
+            document.getElementById('waitlistNameInput').value = '';
+            renderWaitlistItems();
+            modal.style.display = 'flex';
+            modal.setAttribute('aria-hidden', 'false');
+            // Focus the Add name input for quick entry
+            const input = document.getElementById('waitlistNameInput');
+            if (input && typeof input.focus === 'function') {
+                input.focus();
+            }
+        }
+
+        function closeWaitlistModal() {
+            const modal = document.getElementById('waitlistModal');
+            modal.style.display = 'none';
+            modal.setAttribute('aria-hidden', 'true');
+            activeWaitlistTable = null;
+        }
+
+        function openConfirm(message, onYes, onNo) {
+            const modal = document.getElementById('confirmModal');
+            const text = document.getElementById('confirmText');
+            text.textContent = message;
+            confirmYesCb = function() { onYes && onYes(); closeConfirm(); };
+            confirmNoCb = function() { onNo && onNo(); closeConfirm(); };
+            modal.style.display = 'flex';
+            modal.setAttribute('aria-hidden', 'false');
+        }
+        function closeConfirm() {
+            const modal = document.getElementById('confirmModal');
+            modal.style.display = 'none';
+            modal.setAttribute('aria-hidden', 'true');
+            confirmYesCb = null;
+            confirmNoCb = null;
+        }
+
+        function renderWaitlistItems() {
+            const ul = document.getElementById('waitlistItems');
+            ul.innerHTML = '';
+            const list = waitlists[String(activeWaitlistTable)] || [];
+            list.forEach((person, idx) => {
+                const li = document.createElement('li');
+                li.className = 'waitlist-item';
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = idx === 0 ? person + ' (in meeting)' : person;
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'icon-button';
+                removeBtn.title = 'Remove from waitlist';
+                removeBtn.textContent = '❌';
+                removeBtn.addEventListener('click', function() {
+                    const arr = waitlists[String(activeWaitlistTable)] || [];
+                    const removed = arr.splice(idx, 1);
+                    waitlists[String(activeWaitlistTable)] = arr;
+                    saveWaitlists();
+                    renderWaitlistItems();
+                    // Update table status/count after removal
+                    syncStatusWithWaitlist(activeWaitlistTable);
+                    // If the person removed was the one in meeting, and someone remains, start a new timer; else stop
+                    if (idx === 0) {
+                        const key = String(activeWaitlistTable);
+                        const person = removed && removed[0] ? removed[0] : null;
+                        if (person) {
+                            logMeetingEnd(activeWaitlistTable, person);
+                        }
+                        if (arr.length > 0) {
+                            currentMeetingByTable[key] = arr[0] || null;
+                            if (currentMeetingByTable[key]) logMeetingStart(activeWaitlistTable, currentMeetingByTable[key]);
+                            startMeetingTimer(activeWaitlistTable);
+                        } else {
+                            currentMeetingByTable[key] = null;
+                            stopMeetingTimer(activeWaitlistTable);
+                        }
+                    }
+                });
+                li.appendChild(nameSpan);
+                li.appendChild(removeBtn);
+                ul.appendChild(li);
+            });
+        }
+
+        // Wire modal buttons
+        document.getElementById('waitlistAddBtn').addEventListener('click', function() {
+            const input = document.getElementById('waitlistNameInput');
+            const name = input.value.trim();
+            if (!name || activeWaitlistTable == null) return;
+            const key = String(activeWaitlistTable);
+            const list = waitlists[key] || [];
+            const historyKey = String(activeCompanyName || '').toLowerCase();
+            const history = waitlistHistory[historyKey] || [];
+            const lower = name.toLowerCase();
+            const inCurrent = list.some(n => String(n).toLowerCase() === lower);
+            const inHistory = history.some(n => String(n).toLowerCase() === lower);
+            const tryAdd = () => {
+                // Add to list
+                list.push(name);
+                waitlists[key] = list;
+                saveWaitlists();
+                // Add to history if not present
+                if (!inHistory) {
+                    const h = waitlistHistory[historyKey] || [];
+                    h.push(name);
+                    waitlistHistory[historyKey] = h;
+                    saveWaitlistHistory();
+                }
+                input.value = '';
+                renderWaitlistItems();
+                // Ensure table shows Meeting when waitlist has entries
+                syncStatusWithWaitlist(activeWaitlistTable);
+                // If this is the first person (meeting starts), start timer
+                if (list.length === 1) {
+                    currentMeetingByTable[key] = list[0] || null;
+                    if (currentMeetingByTable[key]) logMeetingStart(activeWaitlistTable, currentMeetingByTable[key]);
+                    startMeetingTimer(activeWaitlistTable);
+                }
+                // Return focus to input field for quick repeated additions
+                input.focus();
+            };
+            if (inCurrent || inHistory) {
+                openConfirm(`${name} is already on or has been on the waitlist for this company. Add again?`, tryAdd, () => { input.value = ''; input.focus(); });
+            } else {
+                tryAdd();
+            }
+        });
+        document.getElementById('waitlistClose').addEventListener('click', closeWaitlistModal);
+        document.getElementById('waitlistCloseFooter').addEventListener('click', closeWaitlistModal);
+        document.getElementById('waitlistNextBtn').addEventListener('click', function() {
+            if (activeWaitlistTable == null) return;
+            const key = String(activeWaitlistTable);
+            const list = waitlists[key] || [];
+            // Clear expired timer styling before processing
+            const card = document.querySelector(`.company-card[data-table="${activeWaitlistTable}"]`);
+            if (card) {
+                const timerEl = card.querySelector('.meeting-timer');
+                if (timerEl) {
+                    timerEl.classList.remove('expired');
+                }
+                card.classList.remove('time-expired');
+            }
+            if (list.length > 0) {
+                const current = list.shift();
+                if (current) {
+                    logMeetingEnd(activeWaitlistTable, current);
+                }
+                waitlists[key] = list;
+                saveWaitlists();
+                renderWaitlistItems();
+            }
+            // If list is now empty, mark table Available; else remain Meeting
+            syncStatusWithWaitlist(activeWaitlistTable);
+            if (list.length > 0) {
+                // New meeting starts
+                currentMeetingByTable[key] = list[0] || null;
+                if (currentMeetingByTable[key]) logMeetingStart(activeWaitlistTable, currentMeetingByTable[key]);
+                startMeetingTimer(activeWaitlistTable);
+            } else {
+                // No one waiting => stop timer
+                currentMeetingByTable[key] = null;
+                stopMeetingTimer(activeWaitlistTable);
+            }
+            // Return focus to input field for quick additions
+            const input = document.getElementById('waitlistNameInput');
+            if (input) input.focus();
+        });
+
+        // Wire confirm modal buttons
+        document.getElementById('confirmYesBtn').addEventListener('click', function() { if (confirmYesCb) confirmYesCb(); });
+        document.getElementById('confirmNoBtn').addEventListener('click', function() { if (confirmNoCb) confirmNoCb(); });
+        document.getElementById('confirmClose').addEventListener('click', closeConfirm);
+
+        // Create and download a CSV with Company, Type, Table, AddedAtDate, AddedAtTime, LeftAtDate, LeftAtTime, TotalMinutes,
+        // and per-meeting details: MetWithName, MeetingStartDate, MeetingStartTime, MeetingEndDate, MeetingEndTime, MeetingTotalMinutes
+        // Filename includes timestamp; session records are cleared after save
+        function exportCompaniesCsv() {
+            const rows = [];
+            rows.push(['Company', 'Type', 'Table', 'AddedAtDate', 'AddedAtTime', 'LeftAtDate', 'LeftAtTime', 'TotalMinutes', 'MetWithName', 'MeetingStartDate', 'MeetingStartTime', 'MeetingEndDate', 'MeetingEndTime', 'MeetingTotalMinutes']);
+            const sorted = [...sessionRecords].sort((a, b) => parseInt(a.tableNumber || 0, 10) - parseInt(b.tableNumber || 0, 10));
+            for (const r of sorted) {
+                let totalMinutes = '';
+                if (r.addedAt && r.leftAt) {
+                    // Parse local time strings (format: YYYY-MM-DDTHH:MM:SS.mmm)
+                    const addedDate = new Date(r.addedAt);
+                    const leftDate = new Date(r.leftAt);
+                    const ms = leftDate.getTime() - addedDate.getTime();
+                    if (!Number.isNaN(ms) && ms >= 0) {
+                        totalMinutes = String(Math.round(ms / 60000));
+                    }
+                }
+                const addedSplit = splitTimestamp(r.addedAt);
+                const leftSplit = splitTimestamp(r.leftAt);
+                const meetings = Array.isArray(r.meetings) ? r.meetings : [];
+                if (meetings.length === 0) {
+                    rows.push([
+                        r.name ?? '',
+                        r.type ?? '',
+                        String(r.tableNumber ?? ''),
+                        addedSplit.date,
+                        addedSplit.time,
+                        leftSplit.date,
+                        leftSplit.time,
+                        totalMinutes,
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        ''
+                    ]);
+                } else {
+                    for (const m of meetings) {
+                        const startSplit = splitTimestamp(m.startAt);
+                        const endSplit = splitTimestamp(m.endAt);
+                        // Calculate meeting total minutes
+                        let meetingTotalMinutes = '';
+                        if (m.startAt && m.endAt) {
+                            const startDate = new Date(m.startAt);
+                            const endDate = new Date(m.endAt);
+                            const ms = endDate.getTime() - startDate.getTime();
+                            if (!Number.isNaN(ms) && ms >= 0) {
+                                meetingTotalMinutes = String(Math.round(ms / 60000));
+                            }
+                        }
+                        rows.push([
+                            r.name ?? '',
+                            r.type ?? '',
+                            String(r.tableNumber ?? ''),
+                            addedSplit.date,
+                            addedSplit.time,
+                            leftSplit.date,
+                            leftSplit.time,
+                            totalMinutes,
+                            m.person ?? '',
+                            startSplit.date,
+                            startSplit.time,
+                            endSplit.date,
+                            endSplit.time,
+                            meetingTotalMinutes
+                        ]);
+                    }
+                }
+            }
+
+            function escapeCsvValue(value) {
+                const str = String(value ?? '');
+                if (/[",\n]/.test(str)) {
+                    return '"' + str.replace(/"/g, '""') + '"';
+                }
+                return str;
+            }
+
+            const csvContent = rows.map(r => r.map(escapeCsvValue).join(',')).join('\n');
+            const bom = '\ufeff'; // BOM to help Excel interpret UTF-8
+            const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+
+            const ts = (function() {
+                const d = new Date();
+                const p = n => String(n).padStart(2, '0');
+                return d.getFullYear() + '' + p(d.getMonth() + 1) + '' + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+            })();
+
+            const filename = 'MeetAndGreet_Session_' + ts + '.csv';
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            // Reset session records after successful save
+            sessionRecords.length = 0;
+            saveSessionRecords();
+        }
+
+        // Stamp end times on open meetings and companies still on the board before export.
+        function finalizeSessionRecordsForClose() {
+            for (const company of [...companies]) {
+                const tableNumber = company.tableNumber;
+                const key = String(tableNumber);
+                const currentPerson = currentMeetingByTable[key];
+                const keyMatch = r => r.name.toLowerCase() === company.name.toLowerCase() && parseInt(r.tableNumber, 10) === parseInt(company.tableNumber, 10);
+
+                if (currentPerson) {
+                    logMeetingEnd(tableNumber, currentPerson);
+                }
+
+                let rec = sessionRecords.find(keyMatch);
+                if (!rec) {
+                    sessionRecords.push({
+                        name: company.name,
+                        type: company.type,
+                        tableNumber: company.tableNumber,
+                        addedAt: null,
+                        leftAt: getLocalTimeISOString(),
+                        meetings: []
+                    });
+                } else if (!rec.leftAt) {
+                    rec.leftAt = getLocalTimeISOString();
+                }
+            }
+            saveSessionRecords();
+        }
+
+        // Stop timers, clear waitlists/companies, and refresh the UI for a fresh session.
+        function resetLiveSessionState() {
+            Object.keys(meetingTimers).forEach(table => stopMeetingTimer(table));
+            Object.keys(tableTimers).forEach(table => stopTableTimer(table));
+
+            Object.keys(currentMeetingByTable).forEach(k => { delete currentMeetingByTable[k]; });
+
+            Object.keys(waitlists).forEach(k => { delete waitlists[k]; });
+            saveWaitlists();
+
+            Object.keys(waitlistHistory).forEach(k => { delete waitlistHistory[k]; });
+            saveWaitlistHistory();
+
+            companies.length = 0;
+            saveCompanies();
+
+            closeWaitlistModal();
+            renderCompanies();
+        }
+
+        function closeSession() {
+            finalizeSessionRecordsForClose();
+            exportCompaniesCsv();
+            resetLiveSessionState();
+        }
+
+        // Wire up Session Close button with confirmation
+        document.getElementById('saveCsvBtn').addEventListener('click', function() {
+            openConfirm('Are you sure you want to end the session?', closeSession, null);
+        });
+
+        function clearForm() {
+            document.getElementById('companyForm').reset();
+        }
+    </script>
+</body>
+</html>
